@@ -1,201 +1,226 @@
 #include <stdio.h>
-#define CAP 50 // Maximum on noof vertices
 
-typedef struct Graph
+/////////////////////////////////////////
+// DISJOINT SET OPERATIONS
+void d_construct(int* d_arr, int noof_ele)
 {
-	int noof_v;
-	int noof_e;
-	int mat[CAP][CAP];
-	int edges[CAP * CAP][2];
-	int weights[CAP * CAP];
-	
-} Graph;
-
-
-#define swap(one, two)\
-	do{\
-		int temp = one;\
-		one = two;\
-		two = temp;\
-	}while (0)
-	
-	
-void mat_read(int rows, int cols, int mat[CAP][CAP])
-{
-	int i, j;
-	for (i = 0; i < rows; ++i)
-	for (j = 0; j < cols; ++j)
-	{
-		scanf("%d", &mat[i][j]);
-	}
-}	
-
-void edges_and_weights_print(int noof_e, int edges[CAP*CAP][2], int weights[CAP*CAP])
-{
-	int i;
-	for (i = 0; i < noof_e; ++i)
-	{
-		printf("(%d, %d, %d) ", edges[i][0], edges[i][1], weights[i]);
-	}
-	printf("\n");
-}	
-
-void mst_print(int noof_v, int mst[CAP*CAP][2])
-{
-	int i;
-	for (i = 0; i < noof_v; ++i)
-	{
-		printf("(%d, %d) ", mst[i][0], mst[i][1]);
-	}
-	printf("\n");
-}	
-
-////////////////////////////////////////////////
-
-int d_find(int noof_v, int* d_arr, int ele)
-{
-	int parent = d_arr[ele];
-	if (parent < 0) return ele;
-	
-	while (d_arr[parent] >= 0)
-	{
-		parent = d_arr[parent];
-	}
-	
-	return parent;
-}
-
-void d_union(int noof_v, int* d_arr, int anc1, int anc2)
-{
-	if (d_arr[anc1] <= d_arr[anc2])
-	{
-		d_arr[anc1] += d_arr[anc2];
-		d_arr[anc2] = anc1;
-	}
-	else
-	{
-		d_arr[anc2] += d_arr[anc1];
-		d_arr[anc1] = anc2;
-	}
-}
-
-void d_construct(int noof_v, int* d_arr)
-{
-	for (int i = 1; i < noof_v + 1; ++i)
+	d_arr[0] = 0;
+	for (int i = 1; i <= noof_ele; ++i)
 	{
 		d_arr[i] = -1;
 	}
 }
-//////////////////////////////////////////////////////////
 
-
-int partition_rpiv(int* weights, int edges[CAP*CAP][2], int left, int right) 
+int d_find(int* d_arr, int ele)
 {
-	int pivot = weights[right];
-	int i = left - 1, j;
-	
-	for (j = left; j < right; ++j)
+	while(d_arr[ele] >= 0)
 	{
-		if (weights[j] < pivot)
+		ele = d_arr[ele];
+	}
+	return ele;
+}
+
+void d_union(int* d_arr, int anc1, int anc2)
+{
+	// We need d_arr[anc1] to be <= d_arr[anc2]
+	if (d_arr[anc1] > d_arr[anc2])
+	{
+		// Swapping anc1 and anc2
+		int temp = anc1;
+		anc1 = anc2;
+		anc2 = temp;
+	}
+
+	d_arr[anc1] += d_arr[anc2];
+	d_arr[anc2] = anc1;	
+}
+//////////////////////////////////////
+
+void arr_print(int size, int* arr)
+{
+	for (int i = 0; i < size; ++i)
+	{
+		printf("%d ", arr[i]);
+	}
+	printf("\n");
+}
+/////////////////////////////////////
+#define Cap 50
+typedef struct Graph
+{
+	int mat[Cap + 1][Cap + 1];
+	int compact[Cap * Cap][3]; // Sparse Matrix. [0] -> row ind, 
+						   // [1] -> col ind, [2] -> edge weight
+	int nfverts; // noof vertices
+	int nfedges; // noof edges
+	int mst_mat[Cap + 1][Cap + 1]; 
+	int mst_cost;
+} Graph;
+
+void g_read(Graph* gr)
+{
+	scanf("%d", &(gr->nfverts));
+	int i, j;
+
+	// Reading the adj mat
+	for (i = 1; i <= gr->nfverts; ++i)
+	{
+		for (j = 1; j <= gr->nfverts; ++j)
 		{
-			i++;
-			swap(weights[i], weights[j]);
-			swap(edges[i][0], edges[j][0]);
-			swap(edges[i][1], edges[j][1]);
+			scanf("%d", &(gr->mat[i][j]));
 		}
+
+		gr->mat[i][i] = 0; // Removing self loops
 	}
-	
-	i++;
-	swap(weights[i], weights[right]);
-	swap(edges[i][0], edges[right][0]);
-	swap(edges[i][1], edges[right][1]);
-	
-	return i;
 }
 
-void quick_sort_rpiv(int* weights, int edges[CAP*CAP][2], int left, int right) 
+void g_print(Graph* gr)
 {
-	if (left < right)
+	int i, j;
+
+	// Printing the adj mat
+	for (i = 1; i <= gr->nfverts; ++i)
 	{
-		int barr = partition_rpiv(weights, edges, left, right);
-		quick_sort_rpiv(weights, edges, left, barr - 1);
-		quick_sort_rpiv(weights, edges, barr + 1, right);
+		for (j = 1; j <= gr->nfverts; ++j)
+		{
+			printf("%d ", (gr->mat[i][j]));
+		}
+
+		printf("\n");
 	}
-	
 }
 
-//////////////////////////////////////////////////////////
-
-void g_read(Graph* graph)
+void g_print_sparse(Graph* gr)
 {
-	// Reading the adjacency matrix of the graph
-	
-	scanf("%d", &(graph->noof_v));
-	mat_read(graph->noof_v, graph->noof_v, graph->mat);
-	for (int i = 0; i < graph->noof_v; ++i)
-		graph->mat[i][i] = 0;
+	for (int i = 0; i < gr->nfedges; ++i)
+	{
+		printf("(%d, %d, %d) ", gr->compact[i][0], gr->compact[i][1], gr->compact[i][2]);
+	}
+	printf("\n");
 }
 
-void g_sparsify_edges_and_weights(Graph* graph)
+void g_print_mst(Graph* gr)
 {
-	int i, j, noof_v = graph->noof_v;
-	graph->noof_e = 0;
+	int i, j;
 
-	for (i = 0; i < noof_v; ++i)
-		for (j = i; j < noof_v; ++j)
-			if (graph->mat[i][j] > 0)
+	// Printing the adj mat
+	for (i = 1; i <= gr->nfverts; ++i)
+	{
+		for (j = 1; j <= gr->nfverts; ++j)
+		{
+//			printf("%d ", (gr->mst_mat[i][j]));
+		}
+
+//		printf("\n");
+	}
+
+	printf("Minimum cost by Kruskal's = %d\n", gr->mst_cost);
+}
+
+void g_sparsify_mat(Graph* gr)
+{
+	int i, j, cur = 0;
+	for (i = 1; i <= gr->nfverts; ++i)
+	{
+		for (j = i + 1; j <= gr->nfverts; ++j)
+		{
+			if (gr->mat[i][j])
 			{
-				graph->edges[graph->noof_e][0] = i;
-				graph->edges[graph->noof_e][1] = j;
-				graph->weights[graph->noof_e] = graph->mat[i][j];
-				graph->noof_e += 1;
+				gr->compact[cur][0] = i;
+				gr->compact[cur][1] = j;
+				gr->compact[cur][2] = gr->mat[i][j];
+				cur += 1;
 			}
-
-	edges_and_weights_print(graph->noof_e, graph->edges, graph->weights);
-	printf("Here");
-}
-
-void g_sort_edges_by_weight(Graph* graph)
-{
-	quick_sort_rpiv(graph->weights, graph->edges, 0, graph->noof_e - 1);	
-	edges_and_weights_print(graph->noof_e, graph->edges, graph->weights);
-}
-
-void g_kruskals_mst(Graph* graph, int src)
-{
-	int noof_v = graph->noof_v;
-	int d_arr[noof_v + 1];
-	d_construct(noof_v, d_arr);
-	
-	//int mst[CAP*CAP][2];
-	int cur = 0, u, v, anc1, anc2;
-	
-	g_sparsify_edges_and_weights(graph);
-	g_sort_edges_by_weight(graph);
-	printf("Here");
-
-	for(int i = 0; i < graph->noof_e; ++i)
-	{
-		u = graph->edges[i][0];
-		v = graph->edges[i][1];
-		anc1 = d_find(noof_v, d_arr, u);
-		anc2 = d_find(noof_v, d_arr, v);
-
-		if (anc1 != anc2)
-		{/*
-			mst[cur][0] = u;
-			mst[cur][1] = v;
-			cur += 1;
-			*/
-			d_union(noof_v, d_arr, anc1, anc2);
 		}
 	}	
-	//mst_print(cur, mst);
+	gr->nfedges = cur;
+}
+
+#define swap(one, two) \
+	do{\
+		int temp = one;\
+		one = two;\
+		two = temp;\
+	}while(0);
+
+void g_selection_sort_edges(Graph* gr)
+{
+	int i, j, small, pos;
+	for (i = 0; i < gr->nfedges; ++i)
+	{
+		small = gr->compact[i][2];
+		pos = i;
+
+		for (j = i + 1; j < gr->nfedges; ++j)
+		{
+			if (gr->compact[j][2] < small)
+			{
+				small = gr->compact[j][2];
+				pos = j;
+			}
+		}
+
+		swap(gr->compact[i][0], gr->compact[pos][0]);
+		swap(gr->compact[i][1], gr->compact[pos][1]);
+		swap(gr->compact[i][2], gr->compact[pos][2]);
+	}
+}
+
+void g_construct_mst_mat(Graph* gr)
+{
+	int i, j;
+
+	for (i = 1; i <= gr->nfverts; ++i)
+	{
+		for (j = 1; j <= gr->nfverts; ++j)
+		{
+			gr->mst_mat[i][j] = 0;
+		}
+	}	
+
+	gr->mst_cost = 0;
+}
+
+void g_kruskals_mst(Graph* gr)
+{
+	int u, v, wt, anc1, anc2, cur = 0; 
+	g_construct_mst_mat(gr);
+	
+	int d_arr[gr->nfverts + 1];
+	d_construct(d_arr, gr->nfverts);
+
+	g_sparsify_mat(gr);
+	g_selection_sort_edges(gr);	
+	
+	for (int i = 1; i <= gr->nfverts - 1; ++i)
+	{
+		u = gr->compact[cur][0];
+		v = gr->compact[cur][1];
+		wt = gr->compact[cur][2];
+		cur += 1;
+
+		anc1 = d_find(d_arr, u);
+		anc2 = d_find(d_arr, v);
+
+		if (anc1 != anc2)
+		{
+			d_union(d_arr, anc1, anc2);
+			gr->mst_cost += wt;
+			gr->mst_mat[u][v] = gr->mst_mat[v][u] = wt;
+		}
+
+		else 
+		{
+			--i; // Since we found a cycle, we can't let \
+			this i count towards (nfverts - 1)
+		}
+	}
 }
 
 void main()
 {
-	Graph graph;
-	g_read(&graph);
-	g_kruskals_mst(&graph, 0);	
+	Graph gr;
+	g_read(&gr);
+	g_kruskals_mst(&gr);
+	g_print_mst(&gr);
 }
